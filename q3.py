@@ -9,7 +9,7 @@ def scrap_line(line):
     date_str, ip, status = line.rstrip("\n").split(",")
     return str_to_date(date_str), ip, status
 
-def is_error_status(status):
+def is_timeout_status(status):
     return status == "-"
 
 def str_to_date(date_str):
@@ -41,8 +41,8 @@ class ServerManager():
         self.log_datetime = None
         self.after_datetime = None
 
-    def is_error(self):
-        return is_error_status(self.status)
+    def is_timeout(self):
+        return is_timeout_status(self.status)
 
     def is_same_server(self, server):
         return self.server == server
@@ -52,7 +52,7 @@ class ServerManager():
 
     def add_response_time(self, response_time):
         # タイムアウトは999秒として計算
-        if response_time == "-":
+        if is_timeout_status(response_time):
             response_time = "999"
         self.response_time_list = np.append(self.response_time_list, int(response_time))
 
@@ -100,31 +100,30 @@ def main(file_path, max_timeout_cnt, agg_cnt, deadline_time):
             sm.add_response_time(status)
             sm.add_log_datetime(log_datetime)
 
-            # エラーだったらカウントアップ
-            if is_error_status(status):
-                if not sm.is_error():
-                    sm.status = status
-                    sm.log_datetime = log_datetime
-                sm.timeout_cnt_up()
-            
+            if sm.is_overload(agg_cnt, deadline_time) and sm.log_cnt() >= agg_cnt:
+                overload_log_list.append(sm.output_overload_log(agg_cnt))  
+
             # タイムアウト回数が上限超えたら、更新しない
             if sm.timeout_cnt > max_timeout_cnt and sm.after_datetime != None:
                 continue
 
-            # エラーじゃなかったらリセット
-            if not is_error_status(status):
+            # エラーだったらカウントアップ
+            if is_timeout_status(status):
+                if not sm.is_timeout():
+                    sm.status = status
+                    sm.log_datetime = log_datetime
+                sm.timeout_cnt_up()
+            # タイムアウトじゃなかったらリセット,またはタイムアウト回数が規定回数以上なら、復帰日時を保持
+            else:
                 if sm.timeout_cnt >= max_timeout_cnt and sm.after_datetime == None:
                     sm.after_datetime = log_datetime
                 else:
                     sm.timeout_reset()
                     sm.status = status
-            if sm.is_overload(agg_cnt, deadline_time) and sm.log_cnt() >= agg_cnt:
-              overload_log_list.append(sm.output_overload_log(agg_cnt))  
     
-    log_list = []
+    timeout_log_list = []
     for sm in sm_list:
         if sm.timeout_cnt >= max_timeout_cnt:
-            log_list.append(sm.output_log())
-
-    return log_list, overload_log_list
+            timeout_log_list.append(sm.output_log())
+    return timeout_log_list, overload_log_list
 

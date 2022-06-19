@@ -3,7 +3,6 @@
 # 2第引数　タイムアウト回数
 
 from . import fp_util as fp
-import sys
 
 class ServerManager():
     timeout_cnt = 0
@@ -25,7 +24,7 @@ class ServerManager():
         self.log_datetime = None
         self.after_datetime = None
 
-    def is_error(self):
+    def is_timeout(self):
         return fp.is_error_status(self.status)
 
     def is_same_server(self, server):
@@ -68,27 +67,26 @@ def main(file_path, max_timeout_cnt):
 
             sm = get_server_manager(sm_list, server)
 
-            # エラーだったらカウントアップ
-            if fp.is_error_status(status):
-                if not sm.is_error():
-                    sm.status = status
-                    sm.log_datetime = log_datetime
-                sm.timeout_cnt_up()
-            
             # タイムアウト回数が上限超えたら、更新しない
             if sm.timeout_cnt > max_timeout_cnt and sm.after_datetime != None:
                 continue
 
-            # エラーじゃなかったらリセット
-            if not fp.is_error_status(status):
+            # タイムアウトだったらカウントアップ
+            if fp.is_error_status(status):
+                if not sm.is_timeout():
+                    sm.status = status
+                    sm.log_datetime = log_datetime
+                sm.timeout_cnt_up()
+            # タイムアウトじゃなかったらリセット,またはタイムアウト回数が規定回数以上なら、復帰日時を保持
+            else :
                 if sm.timeout_cnt >= max_timeout_cnt and sm.after_datetime == None:
                     sm.after_datetime = log_datetime
                 else:
                     sm.timeout_reset()
                     sm.status = status
 
-    log_list = []
+    timeout_log_list = []
     for sm in sm_list:
         if sm.timeout_cnt >= max_timeout_cnt:
-            log_list.append(sm.output_log())
-    return log_list
+            timeout_log_list.append(sm.output_log())
+    return timeout_log_list

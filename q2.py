@@ -78,7 +78,7 @@ def main(file_path, max_timeout_cnt):
             sm = get_server_manager(sm_list, server)
 
             # タイムアウト回数が上限超えたら、更新しない
-            if sm.timeout_cnt > max_timeout_cnt and sm.after_datetime != None:
+            if sm.timeout_cnt >= max_timeout_cnt and sm.after_datetime != None:
                 continue
 
             # タイムアウトだったらカウントアップ

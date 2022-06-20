@@ -127,3 +127,12 @@ def main(file_path, max_timeout_cnt, agg_cnt, deadline_time):
             timeout_log_list.append(sm.output_log())
     return timeout_log_list, overload_log_list
 
+if __name__ == "__main__":
+    import sys
+    timeout_log_list, overload_log_list = main(sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]))
+    f = open('q3.txt', 'x', encoding='UTF-8')
+    for log in overload_log_list:
+        f.write(log)
+        f.write("\n")
+    f.close()
+    

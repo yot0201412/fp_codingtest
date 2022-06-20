@@ -2,7 +2,17 @@
 # 第1引数　ログファイルパス
 # 2第引数　タイムアウト回数
 
-from . import fp_util as fp
+import datetime
+
+def scrap_line(line):
+    date_str, ip, status = line.rstrip("\n").split(",")
+    return str_to_date(date_str), ip, status
+
+def is_timeout_status(status):
+    return status == "-"
+
+def str_to_date(date_str):
+    return datetime.datetime.strptime(date_str, '%Y%m%d%H%M%S')
 
 class ServerManager():
     timeout_cnt = 0
@@ -25,7 +35,7 @@ class ServerManager():
         self.after_datetime = None
 
     def is_timeout(self):
-        return fp.is_error_status(self.status)
+        return is_timeout_status(self.status)
 
     def is_same_server(self, server):
         return self.server == server
@@ -58,7 +68,7 @@ def main(file_path, max_timeout_cnt):
     with open(file_path) as f:
         line = f.readline()
         while line:
-            log_datetime, server, status = fp.scrap_line(line)
+            log_datetime, server, status = scrap_line(line)
             line = f.readline()
 
             # サーバーごと最初のログ時にServerManagerを作成する
@@ -72,7 +82,7 @@ def main(file_path, max_timeout_cnt):
                 continue
 
             # タイムアウトだったらカウントアップ
-            if fp.is_error_status(status):
+            if is_timeout_status(status):
                 if not sm.is_timeout():
                     sm.status = status
                     sm.log_datetime = log_datetime
@@ -90,3 +100,12 @@ def main(file_path, max_timeout_cnt):
         if sm.timeout_cnt >= max_timeout_cnt:
             timeout_log_list.append(sm.output_log())
     return timeout_log_list
+
+if __name__ == "__main__":
+    import sys
+    timeout_log_list = main(sys.argv[1], int(sys.argv[2]))
+    f = open('q2.txt', 'x', encoding='UTF-8')
+    for log in timeout_log_list:
+        f.write(log)
+        f.write("\n")
+    f.close()

@@ -1,8 +1,17 @@
 # 設問1
 # 第一引数　ログファイルパス
 
-from . import fp_util as fp
-import sys
+import datetime
+
+def scrap_line(line):
+    date_str, ip, status = line.rstrip("\n").split(",")
+    return str_to_date(date_str), ip, status
+
+def is_timeout_status(status):
+    return status == "-"
+
+def str_to_date(date_str):
+    return datetime.datetime.strptime(date_str, '%Y%m%d%H%M%S')
 
 class ServerManager():
     server = None
@@ -16,7 +25,7 @@ class ServerManager():
         self.log_datetime = log_datetime
 
     def is_error(self):
-        return fp.is_error_status(self.status)
+        return is_timeout_status(self.status)
 
     def is_same_server(self, server):
         return self.server == server
@@ -29,20 +38,20 @@ class ServerManager():
         error_term_str = error_term.seconds if error_term else '復帰していません'
         return f'日時：{self.log_datetime.strftime("%Y/%m/%d %H:%M:%S")}, サーバアドレス：{self.server}, 故障期間(秒)：{error_term_str}'
 
-def q1_log(file_path):
+def main(file_path):
     sm_list = []
     error_server_set = set()
     with open(file_path) as f:
         line = f.readline()
         while line:
-            log_datetime, server, status = fp.scrap_line(line)
+            log_datetime, server, status = scrap_line(line)
             # サーバーごと最初のエラー時にServerManagerを作成する
-            if fp.is_error_status(status) and server not in error_server_set:
+            if is_timeout_status(status) and server not in error_server_set:
                 error_server_set.add(server)
                 sm_list.append(ServerManager(server, status, log_datetime))
 
             # エラーが起きたサーバーの復帰時間を取得する
-            if not fp.is_error_status(status) and server in error_server_set:
+            if not is_timeout_status(status) and server in error_server_set:
                 for sm in sm_list:
                     if sm.is_same_server(server) and sm.after_datetime == None:
                         sm.after_datetime = log_datetime
@@ -50,4 +59,11 @@ def q1_log(file_path):
 
     return [ sm.output_log() for sm in sm_list ]
 
-# q1_log(sys.argv[1])
+if __name__ == "__main__":
+    import sys
+    timeout_log_list = main(sys.argv[1])
+    f = open('q2.txt', 'x', encoding='UTF-8')
+    for log in timeout_log_list:
+        f.write(log)
+        f.write("\n")
+    f.close()
